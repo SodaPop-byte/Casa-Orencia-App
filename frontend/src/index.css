@@ -1,0 +1,12 @@
+@tailwind base;
+
+/* --- ADD THIS BLOCK --- */
+@layer base {
+  html {
+    font-family: theme('fontFamily.sans');
+  }
+}
+/* --- END BLOCK --- */
+
+@tailwind components;
+@tailwind utilities;
