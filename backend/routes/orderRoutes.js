@@ -18,14 +18,17 @@ router.get('/', auth, adminOnly, async (req, res) => {
   }
 });
 
-// --- (FIXED) GET MY ORDERS (For Logged-in Resellers) ---
+// --- (FINAL STABLE VERSION) GET MY ORDERS ---
 router.get('/myorders', auth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const myOrders = await Order.find({ userId: userId })
-      // CRITICAL FIX: Populate all necessary product fields for display (Name, Price, Stock, and BOTH image formats)
+    
+    // Final stable query relies on simple string matching
+    const myOrders = await Order.find({ userId: userId }) 
       .populate('productId', 'name price stock imageUrls imageUrl') 
       .sort({ createdAt: -1 });
+
+    console.log(`[MYORDERS] Found ${myOrders.length} orders for user ID: ${userId}`);
     res.json(myOrders);
   } catch (err) {
     console.error('Get my orders error:', err.message, err.stack);

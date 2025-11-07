@@ -3,15 +3,15 @@ import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from './context/AuthContext'; 
 import socket from './socket'; 
 
-// Import Pages
+// Import Pages (CRITICAL: Using the original file names)
 import ProductListPage from './pages/ProductListPage';
 import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import AdminRoute from './components/AdminRoute'; // <-- Ensure this is correct
+import AdminRoute from './components/AdminRoute'; 
 import AdminOrderPage from './pages/AdminOrderPage';
-import MyOrdersPage from './pages/MyOrdersPage';
-import AuthRoute from './components/AuthRoute'; // <-- ENSURE THIS IMPORT IS CORRECT
+import MyOrdersPage from './pages/MyOrdersPage'; 
+import AuthRoute from './components/AuthRoute'; 
 import AdminDashboard from './pages/AdminDashboard'; 
 import ContactOwnerModal from './components/ContactOwnerModal';
 
@@ -19,33 +19,32 @@ function App() {
   const { auth, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   
-  const [newOrderCount, setNewOrderCount] = useState(0); // 4. Notification count state
-  const [isChatModalOpen, setIsChatModalOpen] = useState(false); // 5. Chat modal state
+  const [newOrderCount, setNewOrderCount] = useState(0); 
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false); 
 
   // Socket.IO Listener for New Orders
   useEffect(() => {
-    // Only listen if user is logged in as admin
     if (auth.user && auth.user.role === 'admin') {
       socket.on('newOrder', (newOrder) => {
         console.log('--- Socket: New order received for admin ---');
-        setNewOrderCount(prev => prev + 1); // Increment count
+        setNewOrderCount(prev => prev + 1); 
       });
       
       return () => {
         socket.off('newOrder');
       };
     } else {
-        setNewOrderCount(0); // Reset if not admin
+        setNewOrderCount(0); 
     }
-  }, [auth.user]); // Reruns when user state changes (login/logout)
+  }, [auth.user]); 
 
   const handleLogout = () => {
-    setNewOrderCount(0); // Clear badge on logout
+    setNewOrderCount(0);
     logout();
     navigate('/login');
   };
   
-  // Function to clear the notification when admin views the Dashboard or Orders list
+  // Function to clear the notification when admin views the dashboard
   const handleClearNotifications = () => {
       setNewOrderCount(0);
   };
@@ -76,7 +75,6 @@ function App() {
                       className="text-gray-700 hover:text-theme-accent px-3 py-2 rounded-md text-sm font-medium relative"
                     >
                       Dashboard
-                      {/* Blinking Badge - Only Dashboard gets the pulse */}
                       {newOrderCount > 0 && (
                         <span className="absolute top-1 right-0 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
                       )}
@@ -93,7 +91,6 @@ function App() {
                       className="text-gray-700 hover:text-theme-accent px-3 py-2 rounded-md text-sm font-medium relative"
                     >
                       Manage Orders
-                      {/* Notification Count Bubble */}
                       {newOrderCount > 0 && (
                         <span className="absolute top-0 right-[-10px] bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                           {newOrderCount}
@@ -147,6 +144,8 @@ function App() {
           <Route path="/" element={<ProductListPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          
+          {/* CRITICAL: Use the original MyOrdersPage component */}
           <Route path="/my-orders" element={<AuthRoute><MyOrdersPage /></AuthRoute>} /> 
 
           {/* Admin-Only Routes */}
@@ -156,7 +155,7 @@ function App() {
         </Routes>
       </main>
 
-      {/* --- Footer --- */}
+      {/* --- FOOTER --- */}
       <footer className="bg-white border-t border-gray-200 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-lg text-theme-dark font-serif">

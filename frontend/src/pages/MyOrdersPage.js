@@ -8,10 +8,11 @@ function MyOrdersPage() {
   const [loading, setLoading] = useState(true);
   const { auth } = useContext(AuthContext);
 
-  // --- 1. Fetch Orders Directly from API (Standard Reliable Method) ---
+  // --- 1. Fetch Orders (FINAL, RELIABLE METHOD) ---
   useEffect(() => {
-    if (auth.token) {
-      setLoading(true); // Always set loading before fetch
+    // CRITICAL: Only proceed if the token EXISTS AND the user ID is present
+    if (auth.token && auth.user?.id) { 
+      setLoading(true);
       api.get('/orders/myorders')
         .then(res => {
           setOrders(res.data);
@@ -19,17 +20,20 @@ function MyOrdersPage() {
         })
         .catch(err => {
           console.error("Error fetching my orders:", err);
-          setLoading(false);
+          setLoading(false); 
+          setOrders([]);
         });
-    } else {
+    } else if (!auth.token) {
+      // If logged out, stop loading
       setLoading(false);
+      setOrders([]);
     }
-  }, [auth.token]); // Rerun only when token/login status changes
+    // Dependency now strictly forces a re-fetch when the user object is finally populated
+  }, [auth.token, auth.user?.id]); 
 
-  // --- 2. Listen for socket updates (Admin status change) ---
+  // --- 2. Listen for socket updates (No structural change) ---
   useEffect(() => {
     function onOrderStatusUpdate(updatedOrder) {
-      // Check if the updated order belongs to this user
       if (auth.user && updatedOrder.userId?._id === auth.user.id) {
         setOrders(prevOrders =>
           prevOrders.map(order =>
@@ -44,10 +48,12 @@ function MyOrdersPage() {
     };
   }, [auth.user]); 
 
+  // --- Rendering Logic (STRICT CHECKS) ---
   if (!auth.token) {
     return <div className="p-8 text-center bg-theme-light min-h-screen">Please log in to see your orders.</div>;
   }
-  if (loading) {
+  // If we are logged in but the user data (ID) hasn't loaded yet, show loading
+  if (loading || !auth.user?.id) { 
     return <div className="p-8 text-center bg-theme-light min-h-screen">Loading your orders...</div>;
   }
 
@@ -67,7 +73,6 @@ function MyOrdersPage() {
           <div className="space-y-6">
             {orders.map((order) => {
               
-              // --- Image Fallback Logic (Checks array then string) ---
               const placeholder = 'https://via.placeholder.com/150x100?text=No+Image';
               let displayImage = placeholder;
               
@@ -77,7 +82,6 @@ function MyOrdersPage() {
               else if (order.productId?.imageUrl) {
                 displayImage = order.productId.imageUrl;
               }
-              // --- End Image Logic ---
 
               return (
                 <div key={order._id} className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 flex flex-col sm:flex-row items-start sm:items-center sm:space-x-6">

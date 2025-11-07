@@ -1,12 +1,17 @@
 import axios from 'axios';
 
+// CRITICAL FIX: Base URL must be explicitly defined for production and development.
+// VERCEL/RENDER automatically sets NODE_ENV to 'production'.
+const baseURL = process.env.NODE_ENV === 'production'
+  ? 'https://casa-orencia-api.onrender.com/api' // REPLACE THIS WITH YOUR FINAL RENDER URL (once known)
+  : 'http://localhost:4000/api'; // Local development URL
+
 // Create a central "instance" of axios
 const api = axios.create({
-  baseURL: 'http://localhost:4000/api', // Your backend's base URL
+  baseURL: baseURL,
 });
 
-// This is an "interceptor" - a function that "catches" every request
-// before it gets sent.
+// This is an "interceptor" that adds the JWT token to the header of every request.
 api.interceptors.request.use(
   (config) => {
     // 1. Get the token from local storage

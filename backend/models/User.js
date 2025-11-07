@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const UserSchema = new mongoose.Schema({
-  // --- NEW ---
+const UserSchema = new Schema({
   name: {
     type: String,
     required: true
   },
-  // --- END NEW ---
   email: {
     type: String,
     required: true,
@@ -17,17 +16,19 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  // --- NEW ---
   birthday: {
     type: Date,
-    required: false // Make it optional
+    required: false 
   },
-  // --- END NEW ---
   role: {
     type: String,
     enum: ['reseller', 'admin'],
     default: 'reseller'
   }
-}, { timestamps: true });
+}, { 
+    timestamps: true,
+    // CRITICAL FIX: Ensure the ID is always treated as a simple string 
+    toJSON: { virtuals: true, getters: true } 
+});
 
 module.exports = mongoose.model('User', UserSchema);
