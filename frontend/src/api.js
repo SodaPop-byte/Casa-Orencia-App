@@ -1,10 +1,12 @@
 import axios from 'axios';
 
-// CRITICAL FIX: Base URL must be explicitly defined for production and development.
-// VERCEL/RENDER automatically sets NODE_ENV to 'production'.
+// CRITICAL FINAL FIX: Use the complete, secure HTTPS URL for production
+const LIVE_RENDER_URL = 'https://casa-orencia-api.onrender.com/api'; // <-- PASTE YOUR FULL, CORRECT RENDER URL HERE
+const LOCAL_URL = 'http://localhost:4000/api';
+
 const baseURL = process.env.NODE_ENV === 'production'
-  ? 'https://casa-orencia-api.onrender.com/api' // REPLACE THIS WITH YOUR FINAL RENDER URL (once known)
-  : 'http://localhost:4000/api'; // Local development URL
+  ? LIVE_RENDER_URL
+  : LOCAL_URL;
 
 // Create a central "instance" of axios
 const api = axios.create({
