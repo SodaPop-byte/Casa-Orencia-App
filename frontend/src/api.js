@@ -1,12 +1,8 @@
 import axios from 'axios';
 
-// CRITICAL FINAL FIX: Use the complete, secure HTTPS URL for production
-const LIVE_RENDER_URL = 'https://casa-orencia-api.onrender.com/api'; // <-- PASTE YOUR FULL, CORRECT RENDER URL HERE
-const LOCAL_URL = 'http://localhost:4000/api';
-
-const baseURL = process.env.NODE_ENV === 'production'
-  ? LIVE_RENDER_URL
-  : LOCAL_URL;
+// CRITICAL FIX: Base URL must rely 100% on the REACT_APP_API_BASE environment variable.
+// This is the cleanest structure, which we must assume Vercel uses correctly.
+const baseURL = process.env.REACT_APP_API_BASE || 'http://localhost:4000/api'; 
 
 // Create a central "instance" of axios
 const api = axios.create({
@@ -16,15 +12,17 @@ const api = axios.create({
 // This is an "interceptor" that adds the JWT token to the header of every request.
 api.interceptors.request.use(
   (config) => {
-    // 1. Get the token from local storage
     const token = localStorage.getItem('token');
     
-    // 2. If the token exists, add it to the "Authorization" header
+    // CRITICAL: Manually set the Content-Type for file uploads
+    if (config.data instanceof FormData) {
+        config.headers['Content-Type'] = 'multipart/form-data';
+    }
+
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     
-    // 3. Send the request (now with the token, if it exists)
     return config;
   },
   (error) => {
