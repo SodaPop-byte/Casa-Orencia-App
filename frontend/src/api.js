@@ -1,12 +1,19 @@
 import axios from 'axios';
 
-// CRITICAL FIX: Base URL must rely 100% on the REACT_APP_API_BASE environment variable.
-// This is the cleanest structure, which we must assume Vercel uses correctly.
-const baseURL = process.env.REACT_APP_API_BASE || 'http://localhost:4000/api'; 
+// CRITICAL FINAL FIX: Hardcode the full live Render URL with /api
+// This bypasses Vercel's environment variable issues for production
+const LIVE_RENDER_URL = 'https://casa-orencia-api.onrender.com/api'; 
+const LOCAL_URL = 'http://localhost:4000/api';
+
+const baseURL = process.env.NODE_ENV === 'production'
+  ? LIVE_RENDER_URL // Use the absolute live URL
+  : LOCAL_URL;      // Use the local URL for development
 
 // Create a central "instance" of axios
 const api = axios.create({
   baseURL: baseURL,
+  // Add a timeout failsafe just in case
+  timeout: 15000, 
 });
 
 // This is an "interceptor" that adds the JWT token to the header of every request.
@@ -16,7 +23,8 @@ api.interceptors.request.use(
     
     // CRITICAL: Manually set the Content-Type for file uploads
     if (config.data instanceof FormData) {
-        config.headers['Content-Type'] = 'multipart/form-data';
+        // Axios handles multipart/form-data boundaries; we ensure the type is set.
+        config.headers['Content-Type'] = 'multipart/form-data'; 
     }
 
     if (token) {
