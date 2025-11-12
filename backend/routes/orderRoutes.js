@@ -1,121 +1,137 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const Product = require('../models/Product');
-const Order = require('../models/Order');
 const { auth, adminOnly } = require('../middleware/auth');
+const { upload, cloudinary } = require('../utils/cloudinary');
 
-// --- GET ALL ORDERS (For Admin Only) ---
-router.get('/', auth, adminOnly, async (req, res) => {
+// --- GET ALL PRODUCTS (UPGRADED FOR SEARCH AND FILTERING) ---
+router.get('/', async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate('userId', 'email')
-      .populate('productId', 'name')
-      .sort({ createdAt: -1 });
-    res.json(orders);
+    const filter = {};
+    if (req.query.category) {
+      filter.category = req.query.category;
+    }
+    if (req.query.search) {
+      filter.name = { $regex: req.query.search, $options: 'i' };
+    }
+    const products = await Product.find(filter).sort({ createdAt: -1 });
+    res.json(products);
   } catch (err) {
-    console.error('Get admin orders error:', err.message, err.stack);
-    res.status(500).json({ error: 'Server error fetching admin orders' });
+    console.error('Error fetching products:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to fetch products' });
   }
 });
 
-// --- (FINAL STABLE VERSION) GET MY ORDERS ---
-router.get('/myorders', auth, async (req, res) => {
+// --- POST NEW PRODUCT ---
+router.post('/', auth, adminOnly, upload.array('images', 5), async (req, res) => {
+  console.log('>>> Request received by POST /api/products handler');
+  console.log('Request Body:', req.body);
+  console.log('Request Files (plural):', req.files);
   try {
-    const userId = req.user.id;
+    const { name, category, price, stock } = req.body;
     
-    // Final stable query relies on simple string matching
-    const myOrders = await Order.find({ userId: userId }) 
-      .populate('productId', 'name price stock imageUrls imageUrl') 
-      .sort({ createdAt: -1 });
-
-    console.log(`[MYORDERS] Found ${myOrders.length} orders for user ID: ${userId}`);
-    res.json(myOrders);
-  } catch (err) {
-    console.error('Get my orders error:', err.message, err.stack);
-    res.status(500).json({ error: 'Server error fetching your orders' });
-  }
-});
-
-
-// --- POST A NEW ORDER (For Logged-in Users) ---
-router.post('/', auth, async (req, res) => {
-  try {
-    const { productId, quantity } = req.body;
-    const userId = req.user.id;
-
-    if (!productId || !quantity || quantity <= 0) {
-      return res.status(400).json({ error: 'Invalid product ID or quantity' });
+    if (!req.files || req.files.length === 0) {
+      console.error('ERROR: req.files is missing or empty!');
+      return res.status(400).json({ error: 'At least one image file is required' });
     }
 
+    const imageUrls = req.files.map(file => file.path);
+    console.log('Image URLs from Cloudinary:', imageUrls);
+
+    const product = new Product({
+      name,
+      category,
+      price,
+      stock,
+      imageUrls: imageUrls
+    });
+
+    console.log('Attempting to save product...');
+    await product.save();
+    console.log('Product saved successfully!');
+
+    const io = req.app.get('io');
+    io.emit('newProduct', product);
+
+    res.status(201).json(product);
+  } catch (err) {
+    console.error('!!! CRASH IN POST /api/products:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to add product (server error)' });
+  }
+});
+
+// --- PUT (UPDATE) A PRODUCT ---
+router.put('/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { name, category, price, stock } = req.body;
+    const productId = req.params.id;
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (category !== undefined) updateData.category = category;
+    if (price !== undefined) updateData.price = price;
+    if (stock !== undefined) updateData.stock = stock;
+
+    if (Object.keys(updateData).length === 0) {
+       return res.status(400).json({ error: 'No update data provided' });
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const io = req.app.get('io');
+    if (updateData.stock !== undefined && Object.keys(updateData).length === 1) {
+       io.emit('stockUpdated', updatedProduct);
+    } else {
+       io.emit('productUpdated', updatedProduct);
+    }
+
+    res.json(updatedProduct);
+  } catch (err) {
+    console.error('Error updating product:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to update product' });
+  }
+});
+
+// --- DELETE A PRODUCT ---
+router.delete('/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const productId = req.params.id;
     const product = await Product.findById(productId);
+
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    if (product.stock < quantity) {
-      return res.status(400).json({ error: 'Insufficient stock' });
+
+    if (product.imageUrls && product.imageUrls.length > 0) {
+      console.log(`Deleting ${product.imageUrls.length} images from Cloudinary...`);
+      const publicIds = product.imageUrls.map(url => {
+        const parts = url.split('/');
+        const publicIdWithFolder = parts[parts.length - 2] + '/' + parts[parts.length - 1].split('.')[0];
+        return publicIdWithFolder;
+      });
+      await cloudinary.api.delete_resources(publicIds);
+      console.log('Cloudinary images deleted.');
     }
 
-    product.stock -= quantity;
-    const updatedProduct = await product.save();
-
-    const newOrder = new Order({
-      userId: userId,
-      productId: productId,
-      quantity: quantity,
-      totalPrice: product.price * quantity,
-      status: 'Pending'
-    });
-    const savedOrder = await newOrder.save();
-    
-    const io = req.app.get('io');
-    io.emit('stockUpdated', updatedProduct);
-
-    const populatedOrder = await Order.findById(savedOrder._id)
-                                      .populate('userId', 'email')
-                                      .populate('productId', 'name');
-    io.emit('newOrder', populatedOrder);
-
-    res.status(200).json({
-      message: 'Order placed successfully',
-      product: updatedProduct
-    });
-
-  } catch (err) {
-    console.error('Order error:', err.message, err.stack);
-    res.status(500).json({ error: 'Failed to place order' });
-  }
-});
-
-// --- UPDATE ORDER STATUS (Admin Only) ---
-router.put('/:id/status', auth, adminOnly, async (req, res) => {
-  try {
-    const { status } = req.body;
-    const orderId = req.params.id;
-
-    if (!['Pending', 'Completed', 'Cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status value' });
-    }
-
-    const updatedOrder = await Order.findByIdAndUpdate(
-      orderId,
-      { status: status },
-      { new: true }
-    )
-      .populate('userId', 'email')
-      .populate('productId', 'name');
-
-    if (!updatedOrder) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
+    await Product.findByIdAndDelete(productId);
 
     const io = req.app.get('io');
-    io.emit('orderStatusUpdated', updatedOrder); 
+    io.emit('productDeleted', { id: productId });
 
-    res.json(updatedOrder);
+    res.json({ message: 'Product deleted successfully' });
 
   } catch (err) {
-    console.error('Update order status error:', err.message, err.stack);
-    res.status(500).json({ error: 'Server error updating order status' });
+    console.error('Error deleting product:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to delete product' });
   }
 });
 

@@ -12,10 +12,9 @@ app.use(express.json());
 
 const server = http.createServer(app); 
 
-// --- Socket.IO Server Configuration (CRITICAL: Fixed CORS) ---
 const io = new Server(server, {
   cors: {
-    origin: "*", // Allow all origins for stable local testing
+    origin: "*", // Allows connection from Vercel/anywhere
     methods: ["GET", "POST", "PUT"]
   }
 });
@@ -39,11 +38,9 @@ app.use('/api/dashboard', dashboardRoutes);
 io.on('connection', (socket) => {
   console.log('✅ Client connected:', socket.id);
   
-  // 1. Listener for incoming chat messages (from Reseller/Admin)
+  // Listener for incoming chat messages
   socket.on('sendMessage', (msg) => {
-    console.log(`[CHAT RECEIVED] From: ${msg.userEmail}, Role: ${msg.senderRole}`);
-    
-    // 2. Broadcast the message to ALL connected clients
+    console.log(`[CHAT RECEIVED] User: ${msg.userEmail}, Msg: ${msg.text}`);
     io.emit('receiveMessage', msg); 
   });
   
@@ -57,7 +54,6 @@ app.get('/', (req, res) => res.send('API is running...'));
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    // Listen on the HTTP server, not just the Express app
     server.listen(process.env.PORT, () =>
       console.log('✅ Server running on port', process.env.PORT)
     );

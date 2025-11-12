@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api'; // 1. CRITICAL: Import 'api' NOT 'axios'
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
@@ -11,6 +11,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const { auth, login } = useContext(AuthContext);
 
+  // Redirect if user is already logged in
   useEffect(() => {
     if (auth.token) {
       navigate('/');
@@ -24,7 +25,10 @@ function LoginPage() {
     setError('');
     
     try {
-      const res = await axios.post('http://localhost:4000/api/auth/login', { email, password });
+      // 2. CRITICAL: Use 'api.post' and the relative path '/auth/login'
+      // This will now correctly use http://localhost:4000/api/auth/login
+      const res = await api.post('/auth/login', { email, password });
+      
       login(res.data.user, res.data.token);
       navigate('/');
     } catch (err) {
@@ -38,7 +42,6 @@ function LoginPage() {
   }
 
   return (
-    // Use the theme-light background
     <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-theme-light"> 
       <div className="w-full max-w-md space-y-8">
         <div>
@@ -67,7 +70,6 @@ function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                // Use theme-accent for the focus ring
                 className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-3 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-theme-accent focus:outline-none focus:ring-theme-accent sm:text-sm"
                 placeholder="Email address"
                 value={email}
@@ -83,7 +85,6 @@ function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
-                // Use theme-accent for the focus ring
                 className="relative block w-full appearance-none rounded-none rounded-b-md border border-gray-300 px-3 py-3 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-theme-accent focus:outline-none focus:ring-theme-accent sm:text-sm"
                 placeholder="Password"
                 value={password}
@@ -96,7 +97,6 @@ function LoginPage() {
           <div>
             <button
               type="submit"
-              // Use theme-accent for the button
               className="group relative flex w-full justify-center rounded-md border border-transparent bg-theme-accent py-3 px-4 text-sm font-medium text-white hover:bg-theme-accent-hover focus:outline-none focus:ring-2 focus:ring-theme-accent focus:ring-offset-2 disabled:bg-gray-400"
               disabled={isLoggingIn}
             >

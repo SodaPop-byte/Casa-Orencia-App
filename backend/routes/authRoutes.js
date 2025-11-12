@@ -1,10 +1,10 @@
 const express = require('express');
-const router = express.Router(); // <-- THIS WAS THE MISSING LINE!
+const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// --- SIGNUP / REGISTER (UPDATED) ---
+// --- SIGNUP / REGISTER (Stable Version) ---
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, role, birthday } = req.body;
@@ -38,7 +38,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// --- LOGIN ---
+// --- LOGIN (Stable Version) ---
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -55,7 +55,8 @@ router.post('/login', async (req, res) => {
 
     const payload = {
       user: {
-        id: user.id,
+        id: user._id,  // CRITICAL FIX: Use user._id 
+        name: user.name, 
         email: user.email,
         role: user.role
       }

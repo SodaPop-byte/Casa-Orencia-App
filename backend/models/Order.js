@@ -1,24 +1,21 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
-const OrderSchema = new Schema({
-  // Link to the user who placed the order
+const orderSchema = new mongoose.Schema({
   userId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  // Link to the product that was ordered
   productId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
     required: true
   },
   quantity: {
     type: Number,
-    required: true
+    required: true,
+    min: 1
   },
-  // We'll store the price at the time of purchase
   totalPrice: {
     type: Number,
     required: true
@@ -28,6 +25,8 @@ const OrderSchema = new Schema({
     enum: ['Pending', 'Completed', 'Cancelled'],
     default: 'Pending'
   }
-}, { timestamps: true }); // Adds createdAt and updatedAt
+}, {
+  timestamps: true
+});
 
-module.exports = mongoose.model('Order', OrderSchema);
+module.exports = mongoose.model('Order', orderSchema);

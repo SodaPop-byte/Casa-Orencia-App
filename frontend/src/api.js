@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // CRITICAL FINAL FIX: Hardcode the full live Render URL with /api
 // This bypasses Vercel's environment variable issues for production
-const LIVE_RENDER_URL = 'https://casa-orencia-api.onrender.com/api'; 
+const LIVE_RENDER_URL = 'https://casa-orencia-app.onrender.com/api'; // ✅ FIXED: Removed space, added /api
 const LOCAL_URL = 'http://localhost:4000/api';
 
 const baseURL = process.env.NODE_ENV === 'production'

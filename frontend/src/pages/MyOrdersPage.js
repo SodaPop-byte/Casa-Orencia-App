@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import api from '../api';
+import api from '../api'; // CRITICAL FIX: Use the 'api' helper, not axios
 import { AuthContext } from '../context/AuthContext';
 import socket from '../socket';
 
@@ -8,30 +8,31 @@ function MyOrdersPage() {
   const [loading, setLoading] = useState(true);
   const { auth } = useContext(AuthContext);
 
-  // --- 1. Fetch Orders (FINAL, RELIABLE METHOD) ---
+  // --- 1. Fetch Orders Directly from API (LAST KNOWN STABLE METHOD) ---
   useEffect(() => {
-    // CRITICAL: Only proceed if the token EXISTS AND the user ID is present
-    if (auth.token && auth.user?.id) { 
+    // CRITICAL: Only fetch if the token exists AND the user object is ready
+    if (auth.token && auth.user) { 
       setLoading(true);
+      // CRITICAL FIX: Use 'api.get' and relative path
       api.get('/orders/myorders')
         .then(res => {
-          setOrders(res.data);
+          // The stable route sends the array directly (res.data)
+          setOrders(res.data); 
           setLoading(false);
         })
         .catch(err => {
           console.error("Error fetching my orders:", err);
           setLoading(false); 
-          setOrders([]);
+          setOrders([]); // Clear orders on failure
         });
-    } else if (!auth.token) {
-      // If logged out, stop loading
+    } else {
+      // If logged out or user object isn't ready
       setLoading(false);
       setOrders([]);
     }
-    // Dependency now strictly forces a re-fetch when the user object is finally populated
-  }, [auth.token, auth.user?.id]); 
+  }, [auth.token, auth.user]); // Only rerun when token/user object changes
 
-  // --- 2. Listen for socket updates (No structural change) ---
+  // --- 2. Listen for socket updates (Admin status change) ---
   useEffect(() => {
     function onOrderStatusUpdate(updatedOrder) {
       if (auth.user && updatedOrder.userId?._id === auth.user.id) {
@@ -48,12 +49,11 @@ function MyOrdersPage() {
     };
   }, [auth.user]); 
 
-  // --- Rendering Logic (STRICT CHECKS) ---
+  // --- Rendering Logic (Themed) ---
   if (!auth.token) {
     return <div className="p-8 text-center bg-theme-light min-h-screen">Please log in to see your orders.</div>;
   }
-  // If we are logged in but the user data (ID) hasn't loaded yet, show loading
-  if (loading || !auth.user?.id) { 
+  if (loading) {
     return <div className="p-8 text-center bg-theme-light min-h-screen">Loading your orders...</div>;
   }
 
